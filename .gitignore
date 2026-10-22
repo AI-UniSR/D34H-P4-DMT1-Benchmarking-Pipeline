@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Jupyter / notebooks
+.ipynb_checkpoints/
+*.ipynb
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Azure ML / local run artifacts
+.azureml/
+amlruns/
+outputs/
+logs/
+artifacts/
+results/
+*.log
+
+# Data files (tune as needed)
+*.csv
+*.parquet
+*.pkl
+*.pickle
+*.joblib
+*.zip
+
+# Local environment config
+.env
+.env.*
+
+# Temporary / backup files
+*.tmp
+*.bak
+*.orig
+*.amltmp
