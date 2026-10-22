@@ -34,6 +34,7 @@ logs/
 artifacts/
 results/
 *.log
+pipeline.sh
 
 # Data files (tune as needed)
 *.csv
