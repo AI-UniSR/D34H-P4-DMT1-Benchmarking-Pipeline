@@ -1,0 +1,45 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+type: command
+name: diagnose_attrition_step
+display_name: Diagnose IDAA1c Attrition
+description: >-
+  Diagnostic breakdown of why IDAA1c_12m is not computable for excluded
+  patients (missing HbA1c, unmatched weight, or unmatched insulin dose),
+  plus age/year exclusions on top. Depends only on clean_step's output --
+  runs independently of target/features/benchmark/statistics.
+
+inputs:
+  clean_dir:
+    type: uri_folder
+  tolerance:
+    type: integer
+    default: 10
+  min_age:
+    type: integer
+    default: 2
+  max_age:
+    type: integer
+    default: 18
+  min_year:
+    type: integer
+    default: 2008
+    description: >-
+      Shared pipeline input (see parent pipeline.yml) -- clean_step's upstream
+      filter and this diagnostic's own re-check both use the same value, so
+      they can't drift apart.
+
+outputs:
+  output_dir:
+    type: uri_folder
+    mode: rw_mount
+
+code: .
+environment: azureml:base-env-3-10:1
+command: >
+  python diagnose_idaa1c_attrition.py
+  --clean_dir ${{inputs.clean_dir}}
+  --tolerance ${{inputs.tolerance}}
+  --min_age ${{inputs.min_age}}
+  --max_age ${{inputs.max_age}}
+  --min_year ${{inputs.min_year}}
+  --output_dir ${{outputs.output_dir}}

@@ -1,0 +1,27 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+type: command
+
+name: features_component
+display_name: Features Component
+version: 1
+
+inputs:
+  data_dir:
+    type: uri_folder
+  target_dir:
+    type: uri_folder
+  min_year:
+    type: integer
+    default: 2008
+
+
+outputs:
+  output_dir:
+    type: uri_folder
+
+code: .
+
+environment: azureml:base-env-3-10:1
+
+command: >-
+  python features.py --data_dir ${{inputs.data_dir}} --target_dir ${{inputs.target_dir}} --min_year ${{inputs.min_year}} --output_dir ${{outputs.output_dir}}

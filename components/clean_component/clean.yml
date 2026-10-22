@@ -1,0 +1,32 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+type: command
+name: clean
+display_name: Clean Component
+description: Cleans raw data
+
+inputs:
+  meteda_path:
+    type: uri_folder
+    description: "Path to folder containing raw meteda data."
+  lab_path:
+    type: uri_file
+    description: "Path to folder containing raw laboratory observations."
+  min_age:
+    type: integer
+    default: 2
+  max_age:
+    type: integer
+    default: 18
+  min_year:
+    type: integer
+    default: 2008
+outputs:
+  output_dir:
+    type: uri_folder
+
+code: . 
+
+environment: azureml:base-env-3-10:1
+
+command: >-
+  python clean.py --meteda_path ${{inputs.meteda_path}} --lab_path ${{inputs.lab_path}} --min_age ${{inputs.min_age}} --max_age ${{inputs.max_age}} --min_year ${{inputs.min_year}} --output_dir ${{outputs.output_dir}}

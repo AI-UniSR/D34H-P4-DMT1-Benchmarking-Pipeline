@@ -1,0 +1,50 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+type: command
+name: logreg_analysis
+display_name: Statistics
+description: Create Table 1 and Univariate LR Analysis
+
+inputs:
+  data_dir:
+    type: uri_folder
+  min_age:
+    type: integer
+    default: 0
+  max_age: 
+    type: integer
+    default: 100
+  patient_wise_threshold:
+    type: number
+  exam_wise_threshold:
+    type: number
+  drop_order:
+    type: string
+    default: features_first
+    enum:
+      - features_first
+      - patients_first
+  sig_p_threshold:
+    type: number
+    default: 0.05
+#   patient_wise_threshold:
+#   path: "${{parent.inputs.patient_wise_threshold}}"
+# exam_wise_threshold:
+#   path: "${{parent.inputs.exam_wise_threshold}}"
+
+outputs:
+  output_dir:
+    type: uri_folder
+    mode: rw_mount
+
+code: .
+environment: azureml:base-env-3-9-shap@latest
+command: >
+  python statistics.py 
+  --data_dir ${{inputs.data_dir}} 
+  --min_age ${{inputs.min_age}}
+  --max_age ${{inputs.max_age}}
+  --patient_wise_threshold ${{inputs.patient_wise_threshold}}
+  --exam_wise_threshold ${{inputs.exam_wise_threshold}}
+  --drop_order ${{inputs.drop_order}}
+  --sig_p_threshold ${{inputs.sig_p_threshold}}
+  --output_dir ${{outputs.output_dir}}

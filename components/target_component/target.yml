@@ -1,0 +1,26 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+type: command
+name: create_target_variables
+display_name: Target Component
+description: Creating Target Variables (IDAA1c) at 12 Months, 12-24 Months, 12-36 Months
+
+inputs:
+  tolerance:
+    type: integer
+  input_dir:
+    type: uri_folder
+  min_age:
+    type: integer
+    default: 2
+  max_age:
+    type: integer
+    default: 18
+outputs:
+  output_dir:
+    type: uri_folder
+    mode: rw_mount
+
+code: .
+environment: azureml:base-env-3-9-shap@latest
+command: >
+  python target.py --tolerance ${{inputs.tolerance}} --input_dir ${{inputs.input_dir}} --min_age ${{inputs.min_age}} --max_age ${{inputs.max_age}} --output_dir ${{outputs.output_dir}}

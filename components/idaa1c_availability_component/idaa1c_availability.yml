@@ -1,0 +1,31 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+type: command
+name: idaa1c_availability_step
+display_name: IDAA1c Availability Comparison
+description: >-
+  Compares baseline characteristics between patients who have a computable
+  IDAA1c value and those who don't, for each of the three remission windows,
+  on the final 2-18 cohort. A missingness/selection-bias check, not an
+  outcome comparison -- no OR/CI, just group means/proportions and a p-value
+  per field. Depends only on clean_step and target_step's outputs -- runs
+  independently of features/benchmark/statistics, in parallel with
+  diagnose_attrition_step.
+
+inputs:
+  clean_dir:
+    type: uri_folder
+  target_dir:
+    type: uri_folder
+
+outputs:
+  output_dir:
+    type: uri_folder
+    mode: rw_mount
+
+code: ..
+environment: azureml:base-env-3-10:1
+command: >
+  python idaa1c_availability_component/idaa1c_availability_comparison.py
+  --clean_dir ${{inputs.clean_dir}}
+  --target_dir ${{inputs.target_dir}}
+  --output_dir ${{outputs.output_dir}}

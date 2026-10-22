@@ -1,0 +1,160 @@
+$schema: https://azuremlschemas.azureedge.net/latest/pipelineJob.schema.json
+type: pipeline
+display_name: Benchmark 
+description: Benchmark models against permutations of the preprocessing pipeline.
+experiment_name: benchmarking
+
+settings:
+  default_compute: azureml:clusterprdwe-mncd3y
+
+inputs:
+  meteda_path:
+    type: uri_folder
+    path: azureml:folder-meteda-raw@latest
+  lab_path:
+    type: uri_file
+    path: azureml:file-laboratory-report-observation-raw@latest
+
+  # target params
+  tolerance: 10
+
+  # cohort params (clean_step / target_step / features_step)
+  min_age: 2
+  max_age: 18
+  # Lab data is missing before this year -- shared so clean_step's upstream
+  # filter and features_step's/diagnose_attrition_step's defensive re-checks
+  # can't drift apart.
+  min_year: 2008
+
+  # feature params
+  patient_wise_threshold: 0.1
+  exam_wise_threshold: 0.8
+  # Order to apply the two completeness filters above. Shared between
+  # benchmark_step and statistics_step so both describe/model the same
+  # cohort -- see apply_completeness_filters in benchmark.py's plotting.py.
+  drop_order: patients_first
+
+  # benchmarking
+  n_folds: 5
+  n_repeats: 5
+  train_size: 0.8
+  # Significance threshold for the nested SignificantFeatureSelector in
+  # benchmark_step's "sig features" run, and for statistics_step's full-cohort
+  # forest plot / significant-features CSV. Shared for the same reason as
+  # drop_order above.
+  sig_p_threshold: 0.05
+
+outputs:
+  benchmarking_results:
+    type: uri_folder
+  statistics:
+    type: uri_folder
+  attrition_diagnostics:
+    type: uri_folder
+  idaa1c_availability_comparison:
+    type: uri_folder
+
+jobs:
+  # Step 1: Clean
+  clean_step:
+    type: command
+    component: ./components/clean_component/clean.yml
+    inputs:
+      meteda_path:
+        ${{parent.inputs.meteda_path}}
+      lab_path:
+        ${{parent.inputs.lab_path}}
+      min_age: ${{parent.inputs.min_age}}
+      max_age: ${{parent.inputs.max_age}}
+      min_year: ${{parent.inputs.min_year}}
+    outputs:
+      output_dir:
+        type: uri_folder
+
+  # Step 2: Create target variable
+  target_step:
+    type: command
+    component: ./components/target_component/target.yml
+    inputs:
+      tolerance: ${{parent.inputs.tolerance}}
+      input_dir: ${{parent.jobs.clean_step.outputs.output_dir}}
+      min_age: ${{parent.inputs.min_age}}
+      max_age: ${{parent.inputs.max_age}}
+    outputs:
+      output_dir:
+        type: uri_folder
+  
+  # Step 3: Collect features
+  features_step:
+    type: command
+    component: ./components/features_component/features.yml
+    inputs:
+      data_dir: ${{parent.jobs.clean_step.outputs.output_dir}}
+      target_dir: ${{parent.jobs.target_step.outputs.output_dir}}
+      min_year: ${{parent.inputs.min_year}}
+    outputs:
+      output_dir:
+        type: uri_folder
+  
+  # Step 4: 
+  benchmark_step:
+    type: command
+    component: ./components/benchmarking_component/benchmark.yml
+    inputs:
+      data_dir: ${{parent.jobs.features_step.outputs.output_dir}}
+      min_age: ${{parent.inputs.min_age}}
+      max_age: ${{parent.inputs.max_age}}
+      n_folds: ${{parent.inputs.n_folds}} 
+      n_repeats: ${{parent.inputs.n_repeats}} 
+      train_size: ${{parent.inputs.train_size}}
+      patient_wise_threshold: ${{parent.inputs.patient_wise_threshold}}
+      exam_wise_threshold: ${{parent.inputs.exam_wise_threshold}}
+      drop_order: ${{parent.inputs.drop_order}}
+      sig_p_threshold: ${{parent.inputs.sig_p_threshold}}
+    outputs:
+      output_dir: ${{parent.outputs.benchmarking_results}}
+  
+  # Step 5: 
+  statistics_step:
+    type: command
+    component: ./components/statistics_component/statistics.yml
+    inputs:
+      data_dir: ${{parent.jobs.features_step.outputs.output_dir}}
+      min_age: ${{parent.inputs.min_age}}
+      max_age: ${{parent.inputs.max_age}}
+      patient_wise_threshold: ${{parent.inputs.patient_wise_threshold}}
+      exam_wise_threshold: ${{parent.inputs.exam_wise_threshold}}
+      drop_order: ${{parent.inputs.drop_order}}
+      sig_p_threshold: ${{parent.inputs.sig_p_threshold}}
+    outputs:
+      output_dir: ${{parent.outputs.statistics}}
+
+  # Step 6: Diagnose why IDAA1c_12m is not computable for excluded patients
+  # (missing HbA1c / unmatched weight / unmatched insulin dose), plus
+  # age/year exclusions on top. Only depends on clean_step, so AML runs it
+  # in parallel with target_step/features_step/benchmark_step/statistics_step
+  # rather than waiting on any of them.
+  diagnose_attrition_step:
+    type: command
+    component: ./components/diagnose_attrition_component/diagnose_attrition.yml
+    inputs:
+      clean_dir: ${{parent.jobs.clean_step.outputs.output_dir}}
+      tolerance: ${{parent.inputs.tolerance}}
+      min_age: ${{parent.inputs.min_age}}
+      max_age: ${{parent.inputs.max_age}}
+      min_year: ${{parent.inputs.min_year}}
+    outputs:
+      output_dir: ${{parent.outputs.attrition_diagnostics}}
+
+  # Step 7: Compare baseline characteristics between patients who have a
+  # computable IDAA1c value and those who don't, per remission window. Only
+  # depends on clean_step and target_step, so AML runs it in parallel with
+  # features_step/benchmark_step/statistics_step/diagnose_attrition_step.
+  idaa1c_availability_step:
+    type: command
+    component: ./components/idaa1c_availability_component/idaa1c_availability.yml
+    inputs:
+      clean_dir: ${{parent.jobs.clean_step.outputs.output_dir}}
+      target_dir: ${{parent.jobs.target_step.outputs.output_dir}}
+    outputs:
+      output_dir: ${{parent.outputs.idaa1c_availability_comparison}}
