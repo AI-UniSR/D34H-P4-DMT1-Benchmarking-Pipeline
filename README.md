@@ -38,7 +38,6 @@ The pipeline is defined in `benchmarking_pipeline.yml` and consists of sequentia
 ## Repository structure
 
 - `benchmarking_pipeline.yml` — Azure ML pipeline definition
-- `pipeline.sh` — convenience script for launching the Azure ML job
 - `components/` — reusable Azure ML command components and Python logic
   - `clean_component/`
   - `target_component/`
